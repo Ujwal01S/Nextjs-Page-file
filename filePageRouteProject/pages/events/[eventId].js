@@ -1,32 +1,58 @@
-import { useRouter } from "next/router";
-import { getEventById } from "../../dummy-data";
 import React from "react";
 import EventSummary from "../../components/event-detail/event-summary";
 import EventLogistics from "../../components/event-detail/event-logistics";
 import EventContent from "../../components/event-detail/event-content";
+import { getEventsById, getFeaturedEvents } from "../../helper/api-util";
+import Head from "next/head";
 
-export default function EventDetailPage() {
-  const router = useRouter();
+export default function EventDetailPage(props) {
+  // const event = getEventById(eventId);
 
-  const eventId = router.query.eventId;
-
-  const event = getEventById(eventId);
-
-  if (!event) {
-    return <p>No Event Found</p>;
+  if (!props.event) {
+    return <p className="center">Loading...</p>;
   }
   return (
     <React.Fragment>
-      <EventSummary title={event.title} />
+      <Head>
+        <title>{props.event.title}</title>
+        <meta name="description" content={props.event.description} />
+      </Head>
+      <EventSummary title={props.event.title} />
       <EventLogistics
-        date={event.date}
-        address={event.location}
-        image={event.image}
-        imageAlt={event.title}
+        date={props.event.date}
+        address={props.event.location}
+        image={props.event.image}
+        imageAlt={props.event.title}
       />
       <EventContent>
-        <p>{event.description}</p>
+        <p>{props.event.description}</p>
       </EventContent>
     </React.Fragment>
   );
+}
+
+export async function getStaticProps(context) {
+  const eventId = context.params.eventId;
+  const eventDetail = await getEventsById(eventId);
+
+  return {
+    props: {
+      event: eventDetail,
+    },
+    revalidate: 30,
+  };
+}
+
+export async function getStaticPaths() {
+  const allEvents = await getFeaturedEvents();
+
+  const eventIds = allEvents.map((event) => event.id);
+
+  const pathParams = eventIds.map((id) => ({ params: { eventId: id } }));
+  return {
+    paths: pathParams,
+    fallback: true,
+
+    // if i had fallback as false and we don't have pre-rendered data it throws an error so fallback should be true to specify that more data is there
+  };
 }
